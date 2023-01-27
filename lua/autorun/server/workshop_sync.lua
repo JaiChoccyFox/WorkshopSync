@@ -50,7 +50,7 @@ local function print(...)
 	MsgC(Color(200, 200, 200), "[", Color(128, 255, 255), "WorkshopSync", Color(200, 200, 200), "]", Color(255, 255, 255), " ", sMessage);
 end;
 
--- Function to add Workshop IDs via multiple ways
+-- Function to add Workshop IDs via both systems
 local function AddWorkshopID(id)
 	local wsid = tostring(id);
 
@@ -78,25 +78,48 @@ local function ValidateTags(tab)
 	return true;
 end;
 
+-- Enum IDs for GMA validation failure
+local GMA_VALIDATION = GMA_VALIDATION or {
+	["VALIDATE_OK"] = 0,
+	["VALIDATE_ERR_EMPTY_TABLE"] = 1,
+	["VALIDATE_ERR_LUA_ONLY"] = 2,
+	["VALIDATE_ERR_BSP_FOUND"] = 3,
+	["VALIDATE_ERR_MDL_FOUND"] = 4,
+	["VALIDATE_ERR_SND_FOUND"] = 5
+};
+
 -- Validates file paths in GMA
 local function ValidateGMAFilePaths(tab)
-	if (table.IsEmpty(tab)) then print("@ValidateGMAFilePaths() received empty table!"); return false; end;
+	if (table.IsEmpty(tab)) then print("@ValidateGMAFilePaths() received empty table!"); return false, GMA_VALIDATION.VALIDATE_ERR_EMPTY_TABLE; end;
+
+	-- If an add-on only has Lua scripts in it, why would a client want to download it?
+	local luaFilesOnly = true;
 
 	for _, path in ipairs(tab) do
+		-- Check every path for a .lua ending and set luaFilesOnly to false if we have a file that does not!
+		if (not string.EndsWith(path, ".lua")) then luaFilesOnly = false; end;
+
+		-- Find specific file extensions in the GMA, these could be problematic with the dynamic downloads system!
 		if (string.StartWith(path, "maps/") and string.EndsWith(path, ".bsp")) then
-			print("@ValidateGMAFilePaths() found map BSP!");
-			return false;
+			print("@ValidateGMAFilePaths() found a map BSP!");
+			return false, GMA_VALIDATION.VALIDATE_ERR_BSP_FOUND;
 		elseif (string.StartWith(path, "models/") and string.EndsWith(path, ".mdl") and (file.Exists(path, 'MOD') or file.Exists(path, 'hl2') or file.Exists(path, 'episodic'))) then
-			print("@ValidateGMAFilePaths() found overriding MDL!");
-			return false;
+			print("@ValidateGMAFilePaths() found an overriding MDL!");
+			return false, GMA_VALIDATION.VALIDATE_ERR_MDL_FOUND;
 		elseif (string.StartWith(path, "sound/") and (string.EndsWith(path, ".wav") or string.EndsWith(path, ".mp3") or string.EndsWith(path, ".ogg"))) then
-			print("@ValidateGMAFilePaths() found sound WAV/MP3/OGG!");
-			return false;
+			print("@ValidateGMAFilePaths() found a sound WAV/MP3/OGG!");
+			return false, GMA_VALIDATION.VALIDATE_ERR_SND_FOUND;
 		end;
 	end;
 
+	-- Oops! Lua files only, skip it!
+	if (luaFilesOnly) then
+		print("@ValidateGMAFilePaths() found Lua scripts only!");
+		return false, GMA_VALIDATION.VALIDATE_ERR_LUA_ONLY;
+	end;
+
 	print("@ValidateGMAFilePaths() passed.");
-	return true;
+	return true, GMA_VALIDATION.VALIDATE_OK;
 end;
 
 -- Server is initializing
@@ -146,16 +169,30 @@ local function WInitialize()
 		local addonTagsT = string.Explode(',', addonTags);
 		print(string.format("@WInitialize() processing add-on: %q", addon.title));
 		if (tobool(addon.downloaded) and tobool(addon.mounted) and ValidateTags(addonTagsT)) then
-			-- Ideally, we should not use game.MountGMA, but due to the UGC format we cannot use file.Open
-			-- So you just have to deal with this insanity sorry
+			-- Ideally, we should not use game.MountGMA, but due to the UGC format we cannot use file.Open (the GMA files are outside the root folder)
+			-- So you just have to deal with this insanity, sorry
 			local gmaData = {};
 			if (CVAR_DYNDL:GetBool()) then print(string.format("@WInitialize() mounting GMA: %q", addon.file)); gmaData.mounted, gmaData.files = game.MountGMA(addon.file); end;
 
-			if (not table.IsEmpty(gmaData) and gmaData.mounted and ValidateGMAFilePaths(gmaData.files)) then
-				WORKSHOP_MEMORY.DYNAMIC_ID[addon.wsid] = true;
+			if (not table.IsEmpty(gmaData) and gmaData.mounted) then
+				gmaData.validated, gmaData.validationID = ValidateGMAFilePaths(gmaData.files);
+				if (gmaData.validated) then
+					-- Passed, so it becomes a dynamic download add-on instead!
+					WORKSHOP_MEMORY.DYNAMIC_ID[addon.wsid] = true;
+					AddWorkshopID(addon.wsid);
+				elseif (gmaData.validationID != GMA_VALIDATION.VALIDATE_ERR_LUA_ONLY and gmaData.validationID != GMA_VALIDATION.VALIDATE_ERR_BSP_FOUND) then
+					AddWorkshopID(addon.wsid);
+				else
+					-- Weird situation here, I know...
+					-- What is happening here is we DO NOT want maps to be included in the downloads at all!
+					-- Workshop maps are generally handled automatically by the server, so it is better we do not make every map download while a client is connecting.
+					-- BONUS: we can also skip out on Lua-only add-ons!
+					print(string.format("@WInitialize() skipped processing add-on: %q", addon.title));
+				end
+			else
+				-- Bad practice but just force the add-on into the downloads anyway if we failed to check the file contents
+				AddWorkshopID(addon.wsid);
 			end;
-
-			AddWorkshopID(addon.wsid);
 		end;
 	end;
 

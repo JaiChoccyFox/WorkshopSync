@@ -114,7 +114,7 @@ local function WDynamicIDTable(len)
 
 			print(string.format("@CSteamworksFileInfo() processing Workshop ID: %s", wsid));
 
-			local function CSteamworksDownloadUGC(path, oFile)
+			local function CSteamworksDownloadUGC(path)
 				print(string.format("@CSteamworksDownloadUGC() downloaded Workshop ID: %s", wsid));
 				local gmaMounted = MountGMA(path);
 				WORKSHOP_MEMORY.MOUNTED_ID[wsid] = gmaMounted;
@@ -125,7 +125,6 @@ local function WDynamicIDTable(len)
 		end;
 
 		-- Skip already mounted add-ons
-		local cacheGMA = string.format("cache/workshop/%s.gma", wsid);
 		if (WORKSHOP_MEMORY.MOUNTED_ID[wsid]) then
 			print(string.format("@WDynamicIDTable() skipping Workshop ID: %s", wsid));
 			goto queue_continue;
@@ -143,6 +142,7 @@ local function WDynamicIDTable(len)
 		end;
 
 		-- Previously downloaded legacy UGC add-ons get stored in the cache folder
+		local cacheGMA = string.format("cache/workshop/%s.gma", wsid);
 		if (file.Exists(cacheGMA, 'GAME')) then
 			local gmaMounted = MountGMA(cacheGMA);
 			WORKSHOP_MEMORY.MOUNTED_ID[wsid] = gmaMounted;
