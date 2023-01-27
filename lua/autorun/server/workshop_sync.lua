@@ -84,9 +84,10 @@ local GMA_VALIDATION = GMA_VALIDATION or {
 	["VALIDATE_ERR_EMPTY_TABLE"] = 1,
 	["VALIDATE_ERR_LUA_ONLY"] = 2,
 	["VALIDATE_ERR_BSP_FOUND"] = 3,
-	["VALIDATE_ERR_MDL_FOUND"] = 4,
-	["VALIDATE_ERR_FNT_FOUND"] = 5,
-	["VALIDATE_ERR_SND_FOUND"] = 6
+	["VALIDATE_ERR_VTF_FOUND"] = 4,
+	["VALIDATE_ERR_MDL_FOUND"] = 5,
+	["VALIDATE_ERR_FNT_FOUND"] = 6,
+	["VALIDATE_ERR_SND_FOUND"] = 7
 };
 
 -- Validates file paths in GMA
@@ -104,6 +105,9 @@ local function ValidateGMAFilePaths(tab)
 		if (string.StartWith(path, "maps/") and string.EndsWith(path, ".bsp")) then
 			print("@ValidateGMAFilePaths() found a map BSP!");
 			return false, GMA_VALIDATION.VALIDATE_ERR_BSP_FOUND;
+		elseif (string.StartWith(path, "materials/") and string.EndsWith(path, ".vtf") and (file.Exists(path, 'MOD') or file.Exists(path, 'hl2') or file.Exists(path, 'episodic'))) then
+			print("@ValidateGMAFilePaths() found an overriding VTF!");
+			return false, GMA_VALIDATION.VALIDATE_ERR_VTF_FOUND;
 		elseif (string.StartWith(path, "models/") and string.EndsWith(path, ".mdl") and (file.Exists(path, 'MOD') or file.Exists(path, 'hl2') or file.Exists(path, 'episodic'))) then
 			print("@ValidateGMAFilePaths() found an overriding MDL!");
 			return false, GMA_VALIDATION.VALIDATE_ERR_MDL_FOUND;
@@ -194,7 +198,7 @@ local function WInitialize()
 					print(string.format("@WInitialize() skipped processing add-on: %q", addon.title));
 				end
 			else
-				-- Either ConVar is set or we somehow failed to check the GMA file contents, either way we will add the add-on to downloads
+				-- ConVar is set to 0 or we somehow failed to check the GMA file contents, either way we will add the add-on to downloads
 				AddWorkshopID(addon.wsid);
 			end;
 		end;
