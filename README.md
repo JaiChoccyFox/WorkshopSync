@@ -10,7 +10,7 @@ If you encounter any issues with this system, you can either disable it or use t
 As part of the minimal design, there are no menus to customise anything. If you're looking for a more sophisticated solution, this add-on may not suit your needs.
 
 ## Installation
-Download the latest release of this add-on via Steam Workshop or from the [Releases](https://github.com/JaiChoccyFox/WorkshopSync/releases) page.
+Download the latest release of this add-on via Steam Workshop or from the Releases/Downloads page here.
 
 If you're installing this on SRCDS, it's recommended to use `+host_workshop_collection` to fully automate WorkshopSync's process.
 If you wish to use the manual method, you are allowed to place **`*.json`** files into both the **`../garrysmod/data/workshop_sync/resource`** and **`../garrysmod/data/workshop_sync/dynamic`** directories.
