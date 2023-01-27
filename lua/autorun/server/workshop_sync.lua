@@ -85,7 +85,8 @@ local GMA_VALIDATION = GMA_VALIDATION or {
 	["VALIDATE_ERR_LUA_ONLY"] = 2,
 	["VALIDATE_ERR_BSP_FOUND"] = 3,
 	["VALIDATE_ERR_MDL_FOUND"] = 4,
-	["VALIDATE_ERR_SND_FOUND"] = 5
+	["VALIDATE_ERR_FNT_FOUND"] = 5,
+	["VALIDATE_ERR_SND_FOUND"] = 6
 };
 
 -- Validates file paths in GMA
@@ -106,6 +107,9 @@ local function ValidateGMAFilePaths(tab)
 		elseif (string.StartWith(path, "models/") and string.EndsWith(path, ".mdl") and (file.Exists(path, 'MOD') or file.Exists(path, 'hl2') or file.Exists(path, 'episodic'))) then
 			print("@ValidateGMAFilePaths() found an overriding MDL!");
 			return false, GMA_VALIDATION.VALIDATE_ERR_MDL_FOUND;
+		elseif (string.StartWith(path, "resource/") and (string.EndsWith(path, ".otc") or string.EndsWith(path, ".otf") or string.EndsWith(path, ".ttc") or string.EndsWith(path, ".ttf"))) then
+			print("@ValidateGMAFilePaths() found a font OTC/OTF/TTC/TTF!");
+			return false, GMA_VALIDATION.VALIDATE_ERR_FNT_FOUND;
 		elseif (string.StartWith(path, "sound/") and (string.EndsWith(path, ".wav") or string.EndsWith(path, ".mp3") or string.EndsWith(path, ".ogg"))) then
 			print("@ValidateGMAFilePaths() found a sound WAV/MP3/OGG!");
 			return false, GMA_VALIDATION.VALIDATE_ERR_SND_FOUND;
@@ -190,7 +194,7 @@ local function WInitialize()
 					print(string.format("@WInitialize() skipped processing add-on: %q", addon.title));
 				end
 			else
-				-- Bad practice but just force the add-on into the downloads anyway if we failed to check the file contents
+				-- Either ConVar is set or we somehow failed to check the GMA file contents, either way we will add the add-on to downloads
 				AddWorkshopID(addon.wsid);
 			end;
 		end;
