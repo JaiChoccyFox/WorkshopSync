@@ -81,13 +81,14 @@ end;
 -- Enum IDs for GMA validation failure
 local GMA_VALIDATION = GMA_VALIDATION or {
 	["VALIDATE_OK"] = 0,
-	["VALIDATE_ERR_EMPTY_TABLE"] = 1,
-	["VALIDATE_ERR_LUA_ONLY"] = 2,
-	["VALIDATE_ERR_BSP_FOUND"] = 3,
-	["VALIDATE_ERR_VTF_FOUND"] = 4,
-	["VALIDATE_ERR_MDL_FOUND"] = 5,
-	["VALIDATE_ERR_FNT_FOUND"] = 6,
-	["VALIDATE_ERR_SND_FOUND"] = 7
+	["VALIDATE_GAMEMODE"] = 1,
+	["VALIDATE_ERR_EMPTY_TABLE"] = 2,
+	["VALIDATE_ERR_LUA_ONLY"] = 3,
+	["VALIDATE_ERR_BSP_FOUND"] = 4,
+	["VALIDATE_ERR_VTF_FOUND"] = 5,
+	["VALIDATE_ERR_MDL_FOUND"] = 6,
+	["VALIDATE_ERR_FNT_FOUND"] = 7,
+	["VALIDATE_ERR_SND_FOUND"] = 8
 };
 
 -- Validates file paths in GMA
@@ -98,6 +99,9 @@ local function ValidateGMAFilePaths(tab)
 	local luaFilesOnly = true;
 
 	for _, path in ipairs(tab) do
+		-- Gamemodes should be included regardless of the conditions
+		if (string.StartWith(path, "gamemodes/")) then return true, GMA_VALIDATION.VALIDATE_OK; end;
+
 		-- Check every path for a .lua ending and set luaFilesOnly to false if we have a file that does not!
 		if (not string.EndsWith(path, ".lua")) then luaFilesOnly = false; end;
 
@@ -213,10 +217,6 @@ hook.Add("Initialize", "WSYNC_Initialize", WInitialize);
 gameevent.Listen("player_activate");
 local function WPlayerActivate(data)
 	if (not CVAR_DYNDL:GetBool()) then return; end;
-
-	-- Grab the Player entity
-	local ply = Player(data.userid);
-	if (ply:IsListenServerHost()) then print("@WPlayerActivate() attempted to send network data to host!"); return; end;
 
 	-- Turn the Dynamic ID table into a compressed JSON
 	local json = {};
